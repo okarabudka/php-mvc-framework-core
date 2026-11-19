@@ -30,6 +30,9 @@ abstract class DbModel extends Model
         return Application::$app->db->prepare($sql);
     }
 
+    /**
+     * Inserts the model and fills the primary key property, if the model declares one.
+     */
     public function save(): bool
     {
         $tableName = $this->tableName();
@@ -42,8 +45,15 @@ abstract class DbModel extends Model
         foreach ($attributes as $attribute) {
             $statement->bindValue(":$attribute", $this->{$attribute});
         }
+        $statement->execute();
 
-        return $statement->execute();
+        $primaryKey = $this->primaryKey();
+        $id = Application::$app->db->pdo->lastInsertId();
+        if (property_exists($this, $primaryKey) && $id !== false) {
+            $this->loadData([$primaryKey => $id]);
+        }
+
+        return true;
     }
 
     /**
