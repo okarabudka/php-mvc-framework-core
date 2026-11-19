@@ -8,3 +8,6 @@ parameters:
     paths:
         - src
         - tests
+    excludePaths:
+        # Templates get their variables from View::renderView().
+        - tests/Fixtures/views
