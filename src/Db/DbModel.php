@@ -48,8 +48,10 @@ abstract class DbModel extends Model
 
     /**
      * @param array<string, scalar|null> $where column => value, combined with AND
+     *
+     * @return static|null null when no row matches
      */
-    public function findOne(array $where): static|false
+    public function findOne(array $where): ?static
     {
         $tableName = $this->tableName();
         $sql = implode(' AND ', array_map(static fn(string $column): string => "$column = :$column", array_keys($where)));
@@ -61,7 +63,7 @@ abstract class DbModel extends Model
 
         $row = $statement->fetch(PDO::FETCH_ASSOC);
         if (!is_array($row)) {
-            return false;
+            return null;
         }
 
         $model = new static();
