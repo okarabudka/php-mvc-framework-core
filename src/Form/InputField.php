@@ -1,8 +1,8 @@
 <?php
 
-namespace Akrbdk\PhpMvcCore\Form;
+namespace Okarabudka\PhpMvcCore\Form;
 
-use Akrbdk\PhpMvcCore\Model;
+use Okarabudka\PhpMvcCore\Model;
 
 class InputField extends BaseField
 {

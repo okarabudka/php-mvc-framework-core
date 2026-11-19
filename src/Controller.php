@@ -1,8 +1,8 @@
 <?php
 
-namespace Akrbdk\PhpMvcCore;
+namespace Okarabudka\PhpMvcCore;
 
-use Akrbdk\PhpMvcCore\Middlewares\BaseMiddleware;
+use Okarabudka\PhpMvcCore\Middlewares\BaseMiddleware;
 
 class Controller
 {

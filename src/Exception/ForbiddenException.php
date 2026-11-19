@@ -1,6 +1,6 @@
 <?php
 
-namespace Akrbdk\PhpMvcCore\Exception;
+namespace Okarabudka\PhpMvcCore\Exception;
 
 use Exception;
 

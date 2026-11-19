@@ -1,8 +1,8 @@
 <?php
 
-namespace Akrbdk\PhpMvcCore\Db;
+namespace Okarabudka\PhpMvcCore\Db;
 
-use Akrbdk\PhpMvcCore\Application;
+use Okarabudka\PhpMvcCore\Application;
 use PDO;
 
 class Database

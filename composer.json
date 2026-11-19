@@ -1,16 +1,22 @@
 {
-    "name": "akrbdk/php-mvc-framework-core",
+    "name": "okarabudka/php-mvc-framework-core",
+    "description": "Small MVC framework core: router, request/response, models with validation, views, forms, migrations, sessions and middleware.",
+    "type": "library",
     "license": "MIT",
+    "keywords": ["mvc", "framework", "router", "active-record"],
     "authors": [
         {
-            "name": "alexander.karabudka",
+            "name": "Oleksandr Karabudka",
             "email": "sanyakarabudka@gmail.com"
         }
     ],
-    "require": {},
+    "require": {
+        "php": "^8.5",
+        "ext-pdo": "*"
+    },
     "autoload": {
         "psr-4": {
-            "Akrbdk\\PhpMvcCore\\": "src/"
+            "Okarabudka\\PhpMvcCore\\": "src/"
         }
     }
 }

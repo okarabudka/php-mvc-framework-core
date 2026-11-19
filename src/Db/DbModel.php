@@ -1,9 +1,9 @@
 <?php
 
-namespace Akrbdk\PhpMvcCore\Db;
+namespace Okarabudka\PhpMvcCore\Db;
 
-use Akrbdk\PhpMvcCore\Application;
-use Akrbdk\PhpMvcCore\Model;
+use Okarabudka\PhpMvcCore\Application;
+use Okarabudka\PhpMvcCore\Model;
 
 abstract class DbModel extends Model
 {

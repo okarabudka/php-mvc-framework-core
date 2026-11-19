@@ -1,8 +1,8 @@
 <?php
 
-namespace Akrbdk\PhpMvcCore;
+namespace Okarabudka\PhpMvcCore;
 
-use Akrbdk\PhpMvcCore\Db\Database;
+use Okarabudka\PhpMvcCore\Db\Database;
 use Exception;
 
 class Application

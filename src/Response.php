@@ -1,6 +1,6 @@
 <?php
 
-namespace Akrbdk\PhpMvcCore;
+namespace Okarabudka\PhpMvcCore;
 
 class Response
 {

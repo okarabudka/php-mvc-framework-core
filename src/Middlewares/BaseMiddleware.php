@@ -1,6 +1,6 @@
 <?php
 
-namespace Akrbdk\PhpMvcCore\Middlewares;
+namespace Okarabudka\PhpMvcCore\Middlewares;
 
 abstract class BaseMiddleware
 {

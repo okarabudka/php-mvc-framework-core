@@ -1,8 +1,8 @@
 <?php
 
-namespace Akrbdk\PhpMvcCore;
+namespace Okarabudka\PhpMvcCore;
 
-use Akrbdk\PhpMvcCore\Db\DbModel;
+use Okarabudka\PhpMvcCore\Db\DbModel;
 
 abstract class UserModel extends DbModel
 {
