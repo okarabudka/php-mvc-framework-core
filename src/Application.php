@@ -104,7 +104,7 @@ class Application
     public function login(UserModel $user): bool
     {
         $this->user = $user;
-        $this->session->set('user', $user->{$user->primaryKey()});
+        $this->session->set('user', $user->attributeValue($user->primaryKey()));
 
         return true;
     }

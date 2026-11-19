@@ -20,7 +20,7 @@ class View
     public function renderView(string $view, array $params = []): string
     {
         $viewContent = $this->renderFile(Application::$ROOT_DIR . "/views/$view.php", $params);
-        $layout = Application::$app->controller?->layout ?? Application::$app->layout;
+        $layout = Application::$app->controller->layout ?? Application::$app->layout;
         $layoutContent = $this->renderFile(Application::$ROOT_DIR . "/views/layouts/$layout.php", []);
 
         return str_replace('{{content}}', $viewContent, $layoutContent);

@@ -144,9 +144,17 @@ abstract class Model
      */
     public function stringValue(string $attribute): string
     {
-        $value = property_exists($this, $attribute) ? $this->{$attribute} : null;
+        $value = $this->attributeValue($attribute);
 
         return is_scalar($value) ? (string) $value : '';
+    }
+
+    /**
+     * The raw value of a property by name, null when the model has no such property.
+     */
+    public function attributeValue(string $attribute): mixed
+    {
+        return get_object_vars($this)[$attribute] ?? null;
     }
 
     /**
@@ -175,7 +183,7 @@ abstract class Model
             throw new \InvalidArgumentException("Rule 'unique' on '$attribute' needs a 'class' that extends DbModel");
         }
 
-        $uniqueAttribute = $options['attribute'] ?? $attribute;
+        $uniqueAttribute = array_key_exists('attribute', $options) ? $this->stringOption($options, 'attribute') : $attribute;
         $tableName = (new $className())->tableName();
         $statement = Application::$app->db->prepare("SELECT * FROM $tableName WHERE $uniqueAttribute = :attr");
         $statement->bindValue(':attr', $value);

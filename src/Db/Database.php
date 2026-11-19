@@ -73,7 +73,8 @@ class Database
      */
     public function getAppliedMigrations(): array
     {
-        $statement = $this->pdo->query('SELECT migration FROM migrations');
+        $statement = $this->prepare('SELECT migration FROM migrations');
+        $statement->execute();
 
         return array_values(array_filter($statement->fetchAll(PDO::FETCH_COLUMN), is_string(...)));
     }

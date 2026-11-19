@@ -35,10 +35,9 @@ class Session
 
     public function setFlash(string $key, string $message): void
     {
-        $_SESSION[self::FLASH_KEY][$key] = [
-            'remove' => false,
-            'value' => $message,
-        ];
+        $flashMessages = $this->flashMessages();
+        $flashMessages[$key] = ['remove' => false, 'value' => $message];
+        $_SESSION[self::FLASH_KEY] = $flashMessages;
     }
 
     public function getFlash(string $key): ?string

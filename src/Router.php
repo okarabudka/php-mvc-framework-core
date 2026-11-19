@@ -55,7 +55,7 @@ class Router
             return Application::$app->view->renderView($callback);
         }
 
-        if (is_array($callback) && is_string($callback[0])) {
+        if (is_array($callback) && is_string($callback[0]) && is_a($callback[0], Controller::class, true)) {
             $controller = new $callback[0]();
             $controller->action = $callback[1];
             Application::$app->controller = $controller;
