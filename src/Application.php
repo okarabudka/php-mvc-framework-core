@@ -4,8 +4,9 @@ declare(strict_types=1);
 
 namespace Okarabudka\PhpMvcCore;
 
-use Exception;
 use Okarabudka\PhpMvcCore\Db\Database;
+use Okarabudka\PhpMvcCore\Exception\HttpException;
+use Throwable;
 
 /**
  * Front controller and service container. The current instance is reachable as Application::$app.
@@ -70,8 +71,13 @@ class Application
 
         try {
             echo $this->router->resolve();
-        } catch (Exception $e) {
-            $this->response->setStatusCode($e->getCode());
+        } catch (Throwable $e) {
+            if ($e instanceof HttpException) {
+                $this->response->setStatusCode($e->getCode());
+            } else {
+                $this->response->setStatusCode(500);
+                error_log((string) $e);
+            }
             echo $this->view->renderView('_error', [
                 'exception' => $e,
             ]);
