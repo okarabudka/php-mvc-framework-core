@@ -37,7 +37,7 @@ class View
 
         extract($params, EXTR_SKIP);
         ob_start();
-        include_once $file;
+        include $file;
 
         return (string) ob_get_clean();
     }
