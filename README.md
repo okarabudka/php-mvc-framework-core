@@ -1,57 +1,161 @@
 # PHP MVC Framework Core
 
-A minimal, self-written PHP MVC framework core distributed as a Composer package.
+[![CI](https://github.com/okarabudka/php-mvc-framework-core/actions/workflows/ci.yml/badge.svg)](https://github.com/okarabudka/php-mvc-framework-core/actions/workflows/ci.yml)
 
-## Context
+A small MVC framework core written from scratch: router, request and response, models with validation, views with
+layouts, form helpers, migrations, sessions and middleware. It is a Composer library with no runtime dependencies
+besides PDO. [php-mvc-framework](https://github.com/okarabudka/php-mvc-framework) is a complete application built
+on it.
 
-Learning project built in May 2023. The framework code was first written inside the [php-mvc-framework](https://github.com/okarabudka/php-mvc-framework) application and then extracted into this reusable library, which is published on Packagist as `akrbdk/php-mvc-framework-core`.
+## Why it exists
 
-Not tested in production. Use it at your own risk.
+Frameworks such as Laravel and Symfony hide a lot of machinery behind a few lines of configuration. This project
+builds that machinery by hand to show how it fits together: how a front controller turns a URL into a controller
+call, how a model validates input and writes itself to the database, how a template ends up inside a layout, and
+where middleware and sessions hook in.
 
-## Features
+It started in 2023 as part of the demo application and was later extracted into this library. Version 2 brings it
+to PHP 8.5 with strict types, PHPStan at the strictest level and a test suite, and fixes the bugs the first version
+had, among them autoloading that only worked on case-insensitive file systems.
 
-- `Application` container with a static instance, request lifecycle and event listeners (`beforeRequest`, `afterRequest`)
-- `Router` with GET and POST routes and controller/action callbacks
-- `Request` and `Response` wrappers
-- `Controller` base class with layouts and middleware registration
-- `AuthMiddleware` that restricts actions to logged-in users
-- `Model` with rule-based validation: `required`, `email`, `min`, `max`, `match`, `unique`
-- `DbModel` / `UserModel` with `save()` and `findOne()` on top of PDO
-- `Database` with a simple migration runner that tracks applied migrations
-- `Session` with flash messages
-- `View` that renders templates inside layouts
-- Form helpers (`Form`, `InputField`, `TextareaField`) that output Bootstrap-style markup with validation errors
-- `NotFoundException` and `ForbiddenException`
+## What you get
 
-## Tech stack
+**A complete request cycle in a few hundred lines.** `Application` wires the services together, `Router` maps
+`GET`/`POST` paths to views, controller actions or closures, and errors become a rendered error page with the right
+status code: 404 and 403 for the framework's HTTP exceptions, a logged 500 for everything else.
 
-- PHP (no runtime dependencies in `composer.json`; the demo application targets PHP 8.1)
-- PDO
-- Composer, PSR-4 autoloading
+**Models with validation.** Rules `required`, `email`, `min`, `max`, `match` and `unique`, labels and per-field error
+messages. `loadData()` fills only the model's declared public properties and converts values to their types, so
+request data cannot cause a `TypeError`.
+
+**Active-record persistence.** `DbModel::save()` and `findOne()` on PDO with bound parameters, and a migration
+runner that records applied migrations. MySQL and SQLite are supported.
+
+**Views and forms that escape output.** Templates are plain PHP, rendered inside a layout chosen per controller.
+Form fields print Bootstrap markup with the value and the first error, HTML-escaped.
+
+**Sessions, flash messages and middleware.** Flash messages live for exactly one following request.
+`AuthMiddleware` limits controller actions to logged-in users.
+
+**Quality checks.** PHPUnit tests for every component on in-memory SQLite (95 % line coverage), PHPStan at level
+max including the tests, PHP CS Fixer (PER-CS) and a secret scan run in GitHub Actions on PHP 8.5.
+
+## How to use it
+
+```bash
+composer require okarabudka/php-mvc-framework-core
+```
+
+A minimal application needs a front controller, a layout and a view:
+
+```php
+<?php // public/index.php
+
+declare(strict_types=1);
+
+use App\Models\User;
+use Okarabudka\PhpMvcCore\Application;
+
+require __DIR__ . '/../vendor/autoload.php';
+
+$app = new Application(dirname(__DIR__), [
+    'userClass' => User::class, // extends Okarabudka\PhpMvcCore\UserModel
+    'db' => ['dsn' => 'sqlite:' . dirname(__DIR__) . '/app.sqlite'],
+]);
+
+$app->router->get('/', 'home');                                    // views/home.php
+$app->router->get('/hello', fn () => 'Hello');                     // a closure
+$app->router->post('/contacts', [ContactController::class, 'store']); // a controller action
+
+$app->run();
+```
+
+```php
+<!-- views/layouts/main.php -->
+<html><head><title><?= htmlspecialchars($this->title) ?></title></head>
+<body>{{content}}</body></html>
+```
+
+```php
+<!-- views/home.php -->
+<?php $this->title = 'Home'; ?>
+<h1>Welcome</h1>
+```
+
+Errors are rendered with `views/_error.php`, which receives the `$exception`.
+
+Controllers extend `Controller`, return the rendered view and can register middleware:
+
+```php
+final class ProfileController extends Controller
+{
+    public function __construct()
+    {
+        $this->registerMiddleware(new AuthMiddleware(['show']));
+    }
+
+    public function show(Request $request, Response $response): string
+    {
+        return $this->render('profile', ['user' => Application::$app->user]);
+    }
+}
+```
+
+Migrations are classes `Migrations\<file name>` in `migrations/` that implement `Db\Migration`. Apply them with
+`$app->db->applyMigrations()`, for example from a small `migrations.php` script.
+
+### Upgrading from 1.x
+
+Version 2 is published under a new name and namespace. See [CHANGELOG.md](CHANGELOG.md#upgrading-from-1x) for the
+steps.
+
+### Development
+
+You need Docker and make; PHP runs in a container.
+
+| Target          | What it does                                      |
+|-----------------|---------------------------------------------------|
+| `make install`  | Build the PHP 8.5 image and install dependencies  |
+| `make test`     | Run the PHPUnit tests                             |
+| `make coverage` | Run the tests with a coverage report              |
+| `make stan`     | Run PHPStan (level max, sources and tests)        |
+| `make cs`       | Check code style                                  |
+| `make fix`      | Fix code style                                    |
+| `make check`    | Code style, PHPStan and tests                     |
+| `make help`     | List all targets                                  |
 
 ## Architecture
 
-- Classic MVC with a front controller: the application creates `Application`, registers routes and calls `run()`.
-- Global access to services through `Application::$app` (router, request, response, session, view, db, current user).
-- Active-record style models: a model defines `tableName()`, `attributes()` and `primaryKey()`, `DbModel` builds the SQL.
-- Sub-namespaces: `db/` (database and models), `form/` (form rendering), `middlewares/`, `exception/`.
-- Namespace: `Akrbdk\PhpMvcCore`.
-
-## Getting started
-
-```bash
-composer require akrbdk/php-mvc-framework-core
+```
+Application ── Request, Response, Session, View, Router, Database, current user
+     │
+     └─ run() ─▶ Router::resolve()
+                    ├─ 'view'                 ─▶ View::renderView()
+                    ├─ [Controller, 'action'] ─▶ middlewares ─▶ action(Request, Response)
+                    └─ callable               ─▶ callable(Request, Response)
+                 exception ─▶ status code + views/_error.php
 ```
 
-See [php-mvc-framework](https://github.com/okarabudka/php-mvc-framework) for a complete application that uses this package.
+| Path              | Contents                                                                      |
+|-------------------|-------------------------------------------------------------------------------|
+| `src/`            | `Application`, `Router`, `Request`, `Response`, `Controller`, `Model`, `UserModel`, `View`, `Session` |
+| `src/Db/`         | `Database` (PDO and migration runner), `DbModel` (active record), `Migration` |
+| `src/Form/`       | `Form`, `InputField`, `TextareaField`                                         |
+| `src/Middlewares/`| `BaseMiddleware`, `AuthMiddleware`                                            |
+| `src/Exception/`  | `HttpException`, `NotFoundException`, `ForbiddenException`                    |
+| `tests/`          | PHPUnit tests with fixture views and migrations                              |
 
-## Testing
+Services are reachable through the static `Application::$app`, as in Yii 2. It keeps the code short and is the main
+trade-off of the design: tests create a fresh `Application` for each case.
 
-There are no automated tests.
+## Versioning
+
+Semantic versioning. Released tags are never moved or rewritten. 1.x was published as `akrbdk/php-mvc-framework-core`
+with the namespace `Akrbdk\PhpMvcCore`; those versions stay installable but receive no changes.
 
 ## Status
 
-Finished learning project (2023), not maintained.
+Maintained.
 
 ## License
 
