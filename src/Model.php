@@ -176,7 +176,7 @@ abstract class Model
         }
 
         $uniqueAttribute = $options['attribute'] ?? $attribute;
-        $tableName = $className::tableName();
+        $tableName = (new $className())->tableName();
         $statement = Application::$app->db->prepare("SELECT * FROM $tableName WHERE $uniqueAttribute = :attr");
         $statement->bindValue(':attr', $value);
         $statement->execute();
