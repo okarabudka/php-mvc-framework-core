@@ -83,8 +83,10 @@ class Database
      */
     public function saveMigrations(array $migrations): void
     {
-        $values = implode(',', array_map(static fn(string $migration): string => "('$migration')", $migrations));
-        $this->pdo->exec("INSERT INTO migrations (migration) VALUES $values");
+        $statement = $this->pdo->prepare('INSERT INTO migrations (migration) VALUES (:migration)');
+        foreach ($migrations as $migration) {
+            $statement->execute(['migration' => $migration]);
+        }
     }
 
     public function prepare(string $sql): PDOStatement
