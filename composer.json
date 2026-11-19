@@ -3,7 +3,12 @@
     "description": "Small MVC framework core: router, request/response, models with validation, views, forms, migrations, sessions and middleware.",
     "type": "library",
     "license": "MIT",
-    "keywords": ["mvc", "framework", "router", "active-record"],
+    "keywords": [
+        "mvc",
+        "framework",
+        "router",
+        "active-record"
+    ],
     "authors": [
         {
             "name": "Oleksandr Karabudka",
@@ -14,9 +19,31 @@
         "php": "^8.5",
         "ext-pdo": "*"
     },
+    "require-dev": {
+        "friendsofphp/php-cs-fixer": "^3.95",
+        "phpstan/phpstan": "^2.3",
+        "phpstan/phpstan-phpunit": "^2.1",
+        "phpstan/phpstan-strict-rules": "^2.1",
+        "phpunit/phpunit": "^13.4"
+    },
     "autoload": {
         "psr-4": {
             "Okarabudka\\PhpMvcCore\\": "src/"
         }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Okarabudka\\PhpMvcCore\\Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "test": "phpunit",
+        "coverage": "phpunit --coverage-text",
+        "stan": "phpstan analyse --memory-limit=512M --no-progress",
+        "cs": "php-cs-fixer check --diff",
+        "fix": "php-cs-fixer fix"
+    },
+    "config": {
+        "sort-packages": true
     }
 }

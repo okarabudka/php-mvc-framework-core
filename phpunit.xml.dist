@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+         bootstrap="vendor/autoload.php"
+         cacheDirectory=".phpunit.cache"
+         colors="true"
+         failOnRisky="true"
+         failOnWarning="true"
+         failOnDeprecation="true"
+         failOnNotice="true"
+         displayDetailsOnTestsThatTriggerDeprecations="true"
+         displayDetailsOnTestsThatTriggerWarnings="true">
+    <testsuites>
+        <testsuite name="core">
+            <directory>tests</directory>
+        </testsuite>
+    </testsuites>
+    <source>
+        <include>
+            <directory>src</directory>
+        </include>
+    </source>
+    <php>
+        <!-- Sessions in the CLI: no cookies or cache headers, files in the system temp directory. -->
+        <ini name="session.use_cookies" value="0"/>
+        <ini name="session.cache_limiter" value=""/>
+        <ini name="session.save_path" value="/tmp"/>
+        <ini name="error_reporting" value="-1"/>
+    </php>
+</phpunit>
