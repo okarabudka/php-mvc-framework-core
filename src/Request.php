@@ -1,39 +1,48 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Okarabudka\PhpMvcCore;
 
 class Request
 {
-    public function getPath()
+    /** @var array<mixed> */
+    private array $server;
+
+    /** @var array<mixed> */
+    private array $query;
+
+    /** @var array<mixed> */
+    private array $post;
+
+    /**
+     * Defaults to the PHP superglobals; pass arrays to build a request in tests or CLI scripts.
+     *
+     * @param array<mixed>|null $server
+     * @param array<mixed>|null $query
+     * @param array<mixed>|null $post
+     */
+    public function __construct(?array $server = null, ?array $query = null, ?array $post = null)
     {
-        $path = $_SERVER['REQUEST_URI'] ?? '/';
-        $position = strpos($path, '?');
-
-        if ($position === false) {
-            return $path;
-        }
-
-        return substr($path, 0, $position);
+        $this->server = $server ?? $_SERVER;
+        $this->query = $query ?? $_GET;
+        $this->post = $post ?? $_POST;
     }
 
-    public function getBody()
+    public function getPath(): string
     {
-        $body = [];
+        $uri = $this->server['REQUEST_URI'] ?? '/';
+        $path = is_string($uri) ? $uri : '/';
+        $position = strpos($path, '?');
 
-        if ($this->isGet()) {
-            foreach ($_GET as $key => $item) {
-                $body[$key] = filter_input(INPUT_GET, $key, FILTER_SANITIZE_SPECIAL_CHARS);
-            }
-        }
+        return $position === false ? $path : substr($path, 0, $position);
+    }
 
-        if ($this->isPost()) {
+    public function method(): string
+    {
+        $method = $this->server['REQUEST_METHOD'] ?? 'GET';
 
-            foreach ($_POST as $key => $item) {
-                $body[$key] = filter_input(INPUT_POST, $key, FILTER_SANITIZE_SPECIAL_CHARS);
-            }
-        }
-
-        return $body;
+        return is_string($method) ? strtolower($method) : 'get';
     }
 
     public function isGet(): bool
@@ -41,18 +50,31 @@ class Request
         return $this->method() === 'get';
     }
 
-    public function method(): string
-    {
-        return strtolower($_SERVER['REQUEST_METHOD']);
-    }
-
     public function isPost(): bool
     {
         return $this->method() === 'post';
     }
 
-    public function redirect(string $url): void
+    /**
+     * Query parameters for GET, form fields for POST. Only string values are returned; escape them on output.
+     *
+     * @return array<string, string>
+     */
+    public function getBody(): array
     {
-        header('Location: ' . $url);
+        $source = match ($this->method()) {
+            'get' => $this->query,
+            'post' => $this->post,
+            default => [],
+        };
+
+        $body = [];
+        foreach ($source as $key => $value) {
+            if (is_string($value)) {
+                $body[(string) $key] = $value;
+            }
+        }
+
+        return $body;
     }
 }

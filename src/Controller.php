@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Okarabudka\PhpMvcCore;
 
 use Okarabudka\PhpMvcCore\Middlewares\BaseMiddleware;
@@ -9,26 +11,29 @@ class Controller
     public string $layout = 'main';
     public string $action = '';
 
-    /** @var BaseMiddleware[] */
+    /** @var list<BaseMiddleware> */
     protected array $middlewares = [];
 
-    public function setLayout($layout)
+    public function setLayout(string $layout): void
     {
         $this->layout = $layout;
     }
 
-    public function render(string $view, array $params = [])
+    /**
+     * @param array<string, mixed> $params
+     */
+    public function render(string $view, array $params = []): string
     {
         return Application::$app->view->renderView($view, $params);
     }
 
-    public function registerMiddleware(BaseMiddleware $middleware)
+    public function registerMiddleware(BaseMiddleware $middleware): void
     {
         $this->middlewares[] = $middleware;
     }
 
     /**
-     * @return array
+     * @return list<BaseMiddleware>
      */
     public function getMiddlewares(): array
     {

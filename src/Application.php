@@ -1,17 +1,27 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Okarabudka\PhpMvcCore;
 
-use Okarabudka\PhpMvcCore\Db\Database;
 use Exception;
+use Okarabudka\PhpMvcCore\Db\Database;
 
+/**
+ * Front controller and service container. The current instance is reachable as Application::$app.
+ *
+ * @phpstan-type Config array{userClass: class-string<UserModel>, db: array{dsn?: string, user?: string, password?: string}}
+ */
 class Application
 {
-    const EVENT_BEFORE_REQUEST = 'beforeRequest';
-    const EVENT_AFTER_REQUEST = 'afterRequest';
+    public const string EVENT_BEFORE_REQUEST = 'beforeRequest';
+    public const string EVENT_AFTER_REQUEST = 'afterRequest';
+
     public static string $ROOT_DIR;
     public static Application $app;
+
     public string $layout = 'main';
+    /** @var class-string<UserModel> */
     public string $userClass;
     public View $view;
     public Router $router;
@@ -20,17 +30,22 @@ class Application
     public Session $session;
     public ?Controller $controller = null;
     public Database $db;
-    public ?UserModel $user;
+    public ?UserModel $user = null;
+
+    /** @var array<string, list<callable(): void>> */
     protected array $eventListeners = [];
 
-    public function __construct($rootPath, array $config)
+    /**
+     * @param Config $config
+     */
+    public function __construct(string $rootPath, array $config, ?Request $request = null)
     {
         $this->userClass = $config['userClass'];
 
         self::$ROOT_DIR = $rootPath;
         self::$app = $this;
 
-        $this->request = new Request();
+        $this->request = $request ?? new Request();
         $this->response = new Response();
         $this->session = new Session();
         $this->view = new View();
@@ -38,34 +53,15 @@ class Application
         $this->db = new Database($config['db']);
 
         $primaryValue = $this->session->get('user');
-        if ($primaryValue) {
-            $userClass = new $this->userClass();
-            $primaryKey = $userClass->primaryKey();
-            $this->user = $userClass->findOne([$primaryKey => $primaryValue]);
-        } else {
-            $this->user = null;
+        if (is_scalar($primaryValue)) {
+            $user = new $this->userClass();
+            $this->user = $user->findOne([$user->primaryKey() => $primaryValue]);
         }
     }
 
     public static function isGuest(): bool
     {
-        return !self::$app->user;
-    }
-
-    /**
-     * @return Controller
-     */
-    public function getController(): Controller
-    {
-        return $this->controller;
-    }
-
-    /**
-     * @param Controller $controller
-     */
-    public function setController(Controller $controller): void
-    {
-        $this->controller = $controller;
+        return self::$app->user === null;
     }
 
     public function run(): void
@@ -75,29 +71,35 @@ class Application
         try {
             echo $this->router->resolve();
         } catch (Exception $e) {
-            Application::$app->response->setStatusCode($e->getCode());
+            $this->response->setStatusCode($e->getCode());
             echo $this->view->renderView('_error', [
-                'exception' => $e
+                'exception' => $e,
             ]);
         }
 
         $this->triggerEvent(self::EVENT_AFTER_REQUEST);
     }
 
-    public function triggerEvent($eventName): void
+    /**
+     * @param callable(): void $callback
+     */
+    public function on(string $eventName, callable $callback): void
     {
-        $callbacks = $this->eventListeners[$eventName] ?? [];
-        foreach ($callbacks as $callback) {
-            call_user_func($callback);
+        $this->eventListeners[$eventName][] = $callback;
+    }
+
+    public function triggerEvent(string $eventName): void
+    {
+        foreach ($this->eventListeners[$eventName] ?? [] as $callback) {
+            $callback();
         }
     }
 
     public function login(UserModel $user): bool
     {
         $this->user = $user;
-        $primaryKey = $user->primaryKey();
-        $primaryValue = $user->{$primaryKey};
-        $this->session->set('user', $primaryValue);
+        $this->session->set('user', $user->{$user->primaryKey()});
+
         return true;
     }
 
@@ -107,8 +109,13 @@ class Application
         $this->session->unset('user');
     }
 
-    public function on($eventName, $callback): void
+    public function getController(): ?Controller
     {
-        $this->eventListeners[$eventName][] = $callback;
+        return $this->controller;
+    }
+
+    public function setController(Controller $controller): void
+    {
+        $this->controller = $controller;
     }
 }

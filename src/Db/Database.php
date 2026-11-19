@@ -1,91 +1,106 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Okarabudka\PhpMvcCore\Db;
 
 use Okarabudka\PhpMvcCore\Application;
 use PDO;
+use PDOStatement;
+use RuntimeException;
 
 class Database
 {
     public PDO $pdo;
 
+    /**
+     * @param array{dsn?: string, user?: string, password?: string} $config
+     */
     public function __construct(array $config)
     {
-        $dsn = $config['dsn'] ?? '';
-        $user = $config['user'] ?? '';
-        $password = $config['password'] ?? '';
-        $this->pdo = new PDO($dsn, $user, $password);
+        $this->pdo = new PDO($config['dsn'] ?? '', $config['user'] ?? '', $config['password'] ?? '');
         $this->pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     }
 
-    public function applyMigrations()
+    public function applyMigrations(): void
     {
         $this->createMigrationsTable();
         $appliedMigrations = $this->getAppliedMigrations();
 
-        $files = scandir(Application::$ROOT_DIR . '/migrations');
+        $directory = Application::$ROOT_DIR . '/migrations';
+        $files = glob($directory . '/*.php');
+        if ($files === false) {
+            throw new RuntimeException("Cannot read migrations from $directory");
+        }
 
         $newMigrations = [];
-        $migrationsToApply = array_diff($files, $appliedMigrations);
-
-        foreach ($migrationsToApply as $migration) {
-            if ($migration === '.' || $migration === '..') {
-                continue;
+        foreach (array_diff(array_map('basename', $files), $appliedMigrations) as $migration) {
+            require_once $directory . '/' . $migration;
+            $className = 'Migrations\\' . pathinfo($migration, PATHINFO_FILENAME);
+            $instance = class_exists($className) ? new $className() : null;
+            if (!$instance instanceof Migration) {
+                throw new RuntimeException("$className must exist and implement " . Migration::class);
             }
 
-            require_once Application::$ROOT_DIR . "/migrations/{$migration}";
-            $className = 'Migrations\\' . pathinfo($migration, PATHINFO_FILENAME);
-            $instance = new $className;
-
-            $this->log("Applying migration {$migration}");
+            $this->log("Applying migration $migration");
             $instance->up();
-            $this->log("Applied migration {$migration}");
+            $this->log("Applied migration $migration");
 
             $newMigrations[] = $migration;
         }
 
-        if (!empty($newMigrations)) {
+        if ($newMigrations !== []) {
             $this->saveMigrations($newMigrations);
         } else {
             $this->log('All migrations are applied');
         }
     }
 
-    public function createMigrationsTable()
+    public function createMigrationsTable(): void
     {
+        $id = $this->driver() === 'sqlite' ? 'INTEGER PRIMARY KEY AUTOINCREMENT' : 'INT AUTO_INCREMENT PRIMARY KEY';
         $this->pdo->exec("
             CREATE TABLE IF NOT EXISTS migrations (
-                id INT AUTO_INCREMENT PRIMARY KEY,
+                id $id,
                 migration VARCHAR(255),
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            ) ENGINE=INNODB;
+            )
         ");
     }
 
-    public function getAppliedMigrations()
+    /**
+     * @return list<string>
+     */
+    public function getAppliedMigrations(): array
     {
-        $statement = $this->pdo->prepare("SELECT migration FROM migrations;");
-        $statement->execute();
+        $statement = $this->pdo->query('SELECT migration FROM migrations');
 
-        return $statement->fetchAll(PDO::FETCH_COLUMN);
+        return array_values(array_filter($statement->fetchAll(PDO::FETCH_COLUMN), is_string(...)));
     }
 
-    public function prepare($sql)
+    /**
+     * @param list<string> $migrations
+     */
+    public function saveMigrations(array $migrations): void
+    {
+        $values = implode(',', array_map(static fn(string $migration): string => "('$migration')", $migrations));
+        $this->pdo->exec("INSERT INTO migrations (migration) VALUES $values");
+    }
+
+    public function prepare(string $sql): PDOStatement
     {
         return $this->pdo->prepare($sql);
     }
 
-    protected function log(string $message)
+    public function driver(): string
     {
-        echo '[' . date('Y-m-d H:m:s') . '] - ' . $message . PHP_EOL;
+        $driver = $this->pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
+
+        return is_string($driver) ? $driver : '';
     }
 
-    public function saveMigrations(array $migrations): void
+    protected function log(string $message): void
     {
-        $str = implode(',', array_map(fn($m) => "('$m')", $migrations));
-        $statement = $this->pdo->prepare("INSERT INTO migrations (migration) VALUES
-            $str
-        ");
-        $statement->execute();
+        echo '[' . date('Y-m-d H:m:s') . '] - ' . $message . PHP_EOL;
     }
 }

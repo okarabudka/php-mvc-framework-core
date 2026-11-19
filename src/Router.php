@@ -1,33 +1,41 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Okarabudka\PhpMvcCore;
 
 use Okarabudka\PhpMvcCore\Exception\NotFoundException;
+use Stringable;
+use UnexpectedValueException;
 
 /**
+ * Maps method + path to a callback: a view name, [Controller::class, 'action'] or any callable.
+ * The callback receives the Request and Response and returns the response body (or nothing).
  *
+ * @phpstan-type Callback string|array{class-string<Controller>, string}|callable(Request, Response): (string|Stringable|null|void)
  */
 class Router
 {
+    /** @var array<string, array<string, Callback>> */
     protected array $routes = [];
-    private Request $request;
-    private Response $response;
+
+    public function __construct(
+        private readonly Request $request,
+        private readonly Response $response,
+    ) {}
 
     /**
-     * @param Request $request
+     * @param Callback $callback
      */
-    public function __construct(Request $request, Response $response)
-    {
-        $this->request = $request;
-        $this->response = $response;
-    }
-
-    public function get($path, $callback)
+    public function get(string $path, string|array|callable $callback): void
     {
         $this->routes['get'][$path] = $callback;
     }
 
-    public function post($path, $callback)
+    /**
+     * @param Callback $callback
+     */
+    public function post(string $path, string|array|callable $callback): void
     {
         $this->routes['post'][$path] = $callback;
     }
@@ -35,13 +43,11 @@ class Router
     /**
      * @throws NotFoundException
      */
-    public function resolve()
+    public function resolve(): string
     {
-        $path = $this->request->getPath();
-        $method = $this->request->method();
-        $callback = $this->routes[$method][$path] ?? false;
+        $callback = $this->routes[$this->request->method()][$this->request->getPath()] ?? null;
 
-        if ($callback === false) {
+        if ($callback === null) {
             throw new NotFoundException();
         }
 
@@ -49,18 +55,30 @@ class Router
             return Application::$app->view->renderView($callback);
         }
 
-        if (is_array($callback)) {
-            /** @var Controller $controller */
+        if (is_array($callback) && is_string($callback[0])) {
             $controller = new $callback[0]();
-            Application::$app->controller = $controller;
             $controller->action = $callback[1];
-            $callback[0] = $controller;
+            Application::$app->controller = $controller;
 
             foreach ($controller->getMiddlewares() as $middleware) {
                 $middleware->execute();
             }
+
+            $callback = [$controller, $callback[1]];
         }
 
-        return call_user_func($callback, $this->request, $this->response);
+        if (!is_callable($callback)) {
+            throw new UnexpectedValueException('Route callback is not callable');
+        }
+
+        $result = $callback($this->request, $this->response);
+        if ($result === null) {
+            return '';
+        }
+        if (is_string($result) || $result instanceof Stringable) {
+            return (string) $result;
+        }
+
+        throw new UnexpectedValueException('Route callback must return a string or nothing, got ' . get_debug_type($result));
     }
 }

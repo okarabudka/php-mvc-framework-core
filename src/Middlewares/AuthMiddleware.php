@@ -1,32 +1,34 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Okarabudka\PhpMvcCore\Middlewares;
 
 use Okarabudka\PhpMvcCore\Application;
 use Okarabudka\PhpMvcCore\Exception\ForbiddenException;
 
+/**
+ * Lets only logged-in users reach the listed controller actions (all actions when the list is empty).
+ */
 class AuthMiddleware extends BaseMiddleware
 {
-    public array $actions = [];
-
     /**
-     * @param array $actions
+     * @param list<string> $actions
      */
-    public function __construct(array $actions)
-    {
-        $this->actions = $actions;
-    }
-
+    public function __construct(public array $actions = []) {}
 
     /**
      * @throws ForbiddenException
      */
     public function execute(): void
     {
-        if (Application::isGuest()) {
-            if (empty($this->actions) || in_array(Application::$app->controller->action, $this->actions)) {
-                throw new ForbiddenException();
-            }
+        if (!Application::isGuest()) {
+            return;
+        }
+
+        $action = Application::$app->controller?->action;
+        if ($this->actions === [] || in_array($action, $this->actions, true)) {
+            throw new ForbiddenException();
         }
     }
 }

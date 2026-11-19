@@ -1,42 +1,44 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Okarabudka\PhpMvcCore;
 
+use RuntimeException;
+
+/**
+ * Renders PHP templates from <root>/views and wraps them into a layout from <root>/views/layouts.
+ * Inside a template `$this` is the View, so templates can set the page title.
+ */
 class View
 {
     public string $title = '';
 
-    public function renderView(string $view, array $params = [])
+    /**
+     * @param array<string, mixed> $params
+     */
+    public function renderView(string $view, array $params = []): string
     {
-        $viewContent = $this->renderOnlyView($view, $params);
-        $layoutContent = $this->layoutContent();
+        $viewContent = $this->renderFile(Application::$ROOT_DIR . "/views/$view.php", $params);
+        $layout = Application::$app->controller?->layout ?? Application::$app->layout;
+        $layoutContent = $this->renderFile(Application::$ROOT_DIR . "/views/layouts/$layout.php", []);
+
         return str_replace('{{content}}', $viewContent, $layoutContent);
     }
 
-    private function renderOnlyView($view, array $params = [])
+    /**
+     * @param array<string, mixed> $params
+     */
+    private function renderFile(string $file, array $params): string
     {
-        foreach ($params as $name => $value) {
-            $$name = $value;
+        if (!is_file($file)) {
+            throw new RuntimeException("View file not found: $file");
         }
-        ob_start();
-        include_once Application::$ROOT_DIR . "/views/$view.php";
-        return ob_get_clean();
-    }
 
-    private function layoutContent()
-    {
-        $layout = Application::$app->layout;
-        if (Application::$app->controller) {
-            $layout = Application::$app->controller->layout;
-        }
+        extract($params, EXTR_SKIP);
         ob_start();
-        include_once Application::$ROOT_DIR . "/views/layouts/$layout.php";
-        return ob_get_clean();
-    }
+        include_once $file;
 
-    private function renderContent(string $content)
-    {
-        $layoutContent = $this->layoutContent();
-        return str_replace('{{content}}', $content, $layoutContent);
+        return (string) ob_get_clean();
     }
 }
