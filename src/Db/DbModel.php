@@ -52,7 +52,7 @@ abstract class DbModel extends Model
     public function findOne(array $where): static|false
     {
         $tableName = $this->tableName();
-        $sql = implode('AND ', array_map(static fn(string $column): string => "$column = :$column", array_keys($where)));
+        $sql = implode(' AND ', array_map(static fn(string $column): string => "$column = :$column", array_keys($where)));
         $statement = static::prepare("SELECT * FROM $tableName WHERE $sql");
         foreach ($where as $column => $value) {
             $statement->bindValue(":$column", $value);
